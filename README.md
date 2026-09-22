@@ -1,20 +1,42 @@
 # My-Agent-Debugger
 An AI Agent debugging toolkit based on LLM
+
 ## 💡 项目背景
-本项目为个人实战项目，旨在解决轻量级模型（如 GLM-4-Flash）在 Agent 调用链中的“代码幻觉”与“容错低”问题。通过 Trace 追踪和自动重试机制，降低 Agent 在调用外部工具（如 API、数据库）时的报错重试率。
+本项目为个人实战项目，旨在解决轻量级模型（如 GLM-4-Flash）在 Agent 调用链中的“代码幻觉”与“容错率低”问题。通过 Trace 追踪和自动重试机制，降低 Agent 在调用外部工具（如 API、数据库）时的报错重试率。
 
 ## 🔍 实战踩坑与解决案例
-在搭建本地 Agent 工具链时，我遇到了以下真实痛点，并在此仓库记录了排查思路与截图：
+在搭建本地 Agent 工具链时，我遇到了以下真实痛点，并在此仓库记录了完整的排查思路与截图：
 
-1. **轻量级模型的代码幻觉（对象解构错误）**
-   * **现象**：智谱 GLM-4-Flash 生成 Node.js 脚本时，错误地对字符串使用了对象解构赋值，导致参数变成 `undefined`，最终任务失败并产生错误引导（如误报“Cannot find module”）。
-   * **解决**：通过查看 Trace（轨迹）日志精准定位到参数异常，手动替换为 DeepSeek 后一次跑通，确立了“核心链路调用强推理模型”的策略。
-2. **沙箱环境限制**
-   * **现象**：Harness 沙箱拦截了 Python 解释器的外部调用，报错 `file access denied`。
-   * **解决**：顺应沙箱的安全规则，将工具重构为 Node.js 内置环境，兼顾了安全性与执行效率。
-3. **依赖编译与字符集编码**
-   * **现象**：遇到原生 C++ 模块（`better-sqlite3`）的编译风险，以及 HTTP 响应中文字符集未声明导致的乱码。
-   * **解决**：果断改用 Node.js 内置的 `node:sqlite` 模块实现零依赖；通过修改响应头 `charset=utf-8` 解决乱码。
+### 1. 沙箱环境限制与工具重构
+* **现象**：Harness 沙箱拦截了 Python 解释器的外部调用，报错 `file access denied`。
+* **解决**：顺应沙箱的安全规则，将工具重构为 Node.js 内置环境，兼顾了安全性与执行效率。
+  ![沙箱拦截](01-sandbox-denied.png)
+
+### 2. 轻量级模型代码幻觉与自我纠错失败
+* **现象**：智谱 GLM-4-Flash 生成 Node.js 脚本时，错误地对字符串使用了对象解构赋值（`const { id } = '1002'`），导致参数变成 `undefined`，最终任务失败并产生错误引导（如误报“Not found”）。
+* **现象**：让该模型尝试自我纠错时，它既无法识别逻辑错误，又因端口占用和环境模块隔离（沙箱导致的 `Cannot find module`）彻底放弃。
+* **解决**：通过查看 Trace（轨迹）日志精准定位到参数异常，手动替换为 DeepSeek 后一次跑通，确立了“核心链路调用强推理模型”的策略。
+  ![模型幻觉](02-model-hallucination-trace.png)
+  ![自我纠错失败](03-self-correction-failure.png)
+
+### 3. 强推理模型修复与字符集编码排错
+* **现象**：DeepSeek 接手后精准修复了代码，但首次请求时遇到 PowerShell 默认解码导致的乱码（`aæ...`）。
+* **解决**：模型主动分析出是 `Content-Type: text/plain` 未声明字符集导致，随后添加 `charset=utf-8` 并重启服务，成功获取“李四”。完成后还主动执行 `job_kill` 清理了后台进程，展现了优秀的资源生命周期管理能力。
+  ![DeepSeek成功](04-deepseek-success-trace.png)
+  ![修复编码](05-deepseek-fix-and-encoding.png)
+  ![字符集成功](06-charset-utf8-success.png)
+
+### 4. 外部 API 集成与合规审批
+* **现象**：在开发 GitHub Issue 抓取脚本时，需要将英文标题翻译为中文。
+* **解决**：Agent 严格遵守 `AGENTS.md` 规则，先输出计划并获得人工批准后才写入文件。同时，它识别到国内网络环境对 Google 翻译的限制，成功集成了 MyMemory 免费翻译 API。
+  ![计划审批](07-github-issues-plan-approval.png)
+  ![外接翻译API](08-script-generation-summary.png)
+
+### 5. 数据库依赖风险与零依赖改造
+* **现象**：创建 SQLite 数据库时，Agent 原本计划使用 `better-sqlite3`，但这在 Windows 下属于原生 C++ 模块，存在编译失败风险。
+* **解决**：我果断介入，要求修改方案。Agent 随即检查 Node 版本（v24.21.0），改用内置的 `node:sqlite` 模块。最终成功建表、插入数据并查询出 `id=2` 的学生为“李四”，实现了零外部依赖部署。
+  ![数据库选型](09-database-sqlite-setup.png)
+  ![执行验证](10-sqlite-execution-and-verification.png)
 
 ## 🚀 核心功能
 1. 捕获终端报错日志。
