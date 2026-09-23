@@ -1,11 +1,31 @@
-# My-Agent-Debugger
-An AI Agent debugging toolkit based on LLM
+# My-Agent-Debugger (Agent 工具链排错与混合工作流实战记录)
 
 ## 💡 项目背景
-本项目为个人实战项目，旨在解决轻量级模型（如 GLM-4-Flash）在 Agent 调用链中的“代码幻觉”与“容错率低”问题。通过 Trace 追踪和自动重试机制，降低 Agent 在调用外部工具（如 API、数据库）时的报错重试率。
+本项目是一个软件工程学生的 **AI Agent 落地实战记录**。在基于 DeepSeek Harness 搭建本地工具链时，我真实经历了沙箱隔离、大模型代码幻觉、Windows 环境编码冲突等工程痛点。我通过 Trace 轨迹分析、多模型 A/B 对比、以及“生成与执行解耦”的混合工作流，最终跑通了从 Node.js 到 Python 的数据库查询闭环。
+本仓库记录了完整的排查思路、对比截图与代码演进过程，旨在分享 AI 时代“AI 辅助生成”与“人类工程审查”结合的最佳实践。
+
+## 🚀 快速复现与运行指南
+### 前置要求
+*   Node.js >= 22.5.0（原生支持 `node:sqlite`）
+*   Python >= 3.10
+*   各大模型 API Key（DeepSeek / 智谱 GLM 等）
+*   本仓库中的 `test.db` 数据库由 `init_db.js` 自动生成，请先执行初始化
+
+### 运行演示脚本
+1. **Node.js 版本（数据库初始化与查询）**：
+   ```bash
+   node init_db.js
+   node query_student.js 2
+   ```
+2. **Python 版本（参数校验与异常捕获）**：
+   ```bash
+   python query_student.py 2
+   python query_student.py abc
+   python query_student.py
+   ```
+*注：本仓库根目录包含 Node.js 和 Python 混合验证脚本，分别对应不同阶段的排错实验。*
 
 ## 🔍 实战踩坑与解决案例
-在搭建本地 Agent 工具链时，我遇到了以下真实痛点，并在此仓库记录了完整的排查思路与截图：
 
 ### 1. 沙箱环境限制与工具重构
 * **现象**：Harness 沙箱拦截了 Python 解释器的外部调用，报错 `file access denied`。
@@ -44,10 +64,20 @@ An AI Agent debugging toolkit based on LLM
   ![Agent 自动修复编码](11-agent-self-correction-trace.png?raw=true)
   ![本地执行验证成功](12-local-execution-verification.png?raw=true)
 
-## 🚀 核心功能
-1. 捕获终端报错日志。
-2. 拼装 Prompt 模版，调用大模型 API 获取修复建议。
-3. 反馈给主 Agent 进行自我纠错。
+### 7. 边界测试与参数校验闭环
+* **现象**：为了让脚本真正可用，我要求 Agent 为 `query_student.py` 增加命令行参数校验，并且必须包含友好的错误提示。
+* **解决**：Agent 自主引入了 `sys.argv` 和 `parse_id` 函数，并主动执行了 4 组边界测试（无效 ID、正常查询、非数字输入、无参数输入），全部通过。这验证了我在 `AGENTS.md` 中设定“先审批后执行”以及“参数化查询防 SQL 注入”的工程规范完全落地。
+  ![参数校验闭环](13-param-validation-success.png?raw=true)
+
+### 8. 上下文工程反思（元规则与任务规则的解耦）
+* **反思**：最初我将代码约束（如“用 `sys.argv` 接收参数”）直接写进 `AGENTS.md`，导致 AI 在后续跨领域任务时产生了上下文污染和幻觉。
+* **解决**：我将架构调整为 **“元规则 + 任务规则”** 的分离设计：`AGENTS.md` 仅保留全局安全与交互底线（如“先请示再执行”），具体的技术约束放在每次对话的 User Prompt 中。这不仅保证了系统上下文纯净，也大幅提升了 AI 的指令遵循准确率。
+
+## 🚀 核心收获
+1. 掌握了基于 Trace（轨迹）定位 AI 工具调用失败原因的方法。
+2. 体验并理解了本地沙箱隔离、文件系统观察策略（`FS_NOT_OBSERVED`）对 Agent 安全的重要性。
+3. 掌握了“AI 生成 + 本地 IDE 验证”的混合工作流，实现了生成与执行的安全解耦。
+4. 具备了对 AI 生成代码进行工程审查（防 SQL 注入、资源释放、异常捕获）的实战能力。
 
 ## 💻 技术栈
 * Python (AI 辅助生成与调试)
