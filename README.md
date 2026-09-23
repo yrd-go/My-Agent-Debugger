@@ -38,6 +38,12 @@ An AI Agent debugging toolkit based on LLM
   ![数据库选型](09-database-sqlite-setup.png?raw=true)
   ![执行验证](10-sqlite-execution-and-verification.png?raw=true)
 
+### 6. 生成与执行解耦（混合工作流闭环）
+* **现象**：由于 Harness 沙箱的安全隔离，Agent 无法直接调用本地 Python 解释器运行脚本；同时 VS Code 静态检查器因为未识别本地解释器，对内置库 `sqlite3` 和 `os` 误报红线。
+* **解决**：我采用了“生成与执行解耦”的混合工作流。让 Agent 专注生成代码，我则手动拉取代码到本地 VS Code，并在终端执行 `python query_student.py`，成功输出 `id 为 2 的学生名字是：李四`。这验证了代码逻辑的正确性，同时保证了系统的安全边界。
+  ![Agent 自动修复编码](11-agent-self-correction-trace.png?raw=true)
+  ![本地执行验证成功](12-local-execution-verification.png?raw=true)
+
 ## 🚀 核心功能
 1. 捕获终端报错日志。
 2. 拼装 Prompt 模版，调用大模型 API 获取修复建议。
