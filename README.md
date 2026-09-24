@@ -83,6 +83,14 @@
   5. 在本地 VS Code 真实执行了 7 组测试用例（含空输入、中英混杂、多语言），全部通过。
   ![多语言翻译路由验证](14-multi-language-router-final.png?raw=true)
 
+### 10. 数据库平滑演进（SQLite -> MongoDB）
+* **现象**：随着 Agent 工具链复杂化，需要存储动态 JSON 结构和非结构化日志。关系型数据库（SQLite/MySQL）的严格表结构显得繁琐。
+* **解决**：我主导了数据库选型变更，从 SQLite 迁移到文档型数据库 **MongoDB**。
+  1. 使用 `pymongo` 库重写 `init_db.py` 和 `query_student.py`。
+  2. 连接信息严格从环境变量 `MONGO_URI` 读取，避免硬编码。
+  3. 数据以 JSON 文档格式存储（`{"id": 1, "name": "张三"}`），契合 AI 领域数据结构多变的特性。
+  4. 在本地 VS Code 真实运行，成功建库、插入 3 条数据并精准查询出 id=2 的“李四”。
+  ![MongoDB 迁移成功](15-mongodb-migration-success.png?raw=true)
 ## 🚀 核心收获
 1. 掌握了基于 Trace（轨迹）定位 AI 工具调用失败原因的方法。
 2. 体验并理解了本地沙箱隔离、文件系统观察策略（`FS_NOT_OBSERVED`）对 Agent 安全的重要性。
