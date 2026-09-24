@@ -101,7 +101,8 @@
 * Python (AI 辅助生成与调试)
 * Node.js (内置模块开发)
 * 大模型 API (DeepSeek / GLM-4-Flash)
-
+* **容器化交付**：提供基于 `python:3.11-slim` 的 `Dockerfile` 与 `.dockerignore`。引入依赖分层缓存优化构建速度，并预留了环境变量注入（`MONGO_URI`）入口，支持 Docker 环境一键部署。
+  
 ## 📈 后续规划
 - [ ] 支持自动捕获不同语言（Node.js、Python）的报错堆栈。
 - [ ] 实现多模型路由：简单报错用轻量模型，复杂错误路由给强模型降本增效。
